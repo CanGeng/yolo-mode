@@ -1,0 +1,26 @@
+{
+  "name": "yolo-mode",
+  "version": "1.0.0",
+  "description": "Unattended full-access (yolo) mode for the DeepSeek Harness: a human-only /yolo switch arms danger-full-access + never-approval for long autonomous runs, with a best-effort catastrophic-command tripwire guard, optional time-boxed expiry, and idle/denial notifications (desktop / webhook / email)",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

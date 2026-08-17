@@ -1,0 +1,39 @@
+# yolo-mode profile layer: mount the unattended full-access plugin.
+#
+# /yolo on [duration] arms danger-full-access + never-approval for the issuing
+# session (human-only UI command - the model gets NO tool to arm itself).
+# /yolo off disarms; expiry (when a duration was given) auto-reverts to the
+# pre-arm permission snapshot. A best-effort catastrophic-command tripwire
+# guard (default: always on) denies fork bombs / raw-device writes / root
+# deletions / shutdown-family commands in EVERY session, yolo or not, and
+# write/edit into protected paths (~/.ssh, ~/.gnupg, ...). Repeated denials
+# while armed trip a circuit breaker that disarms yolo. Notifications (desktop
+# command / webhook POST / SMTP email) are all opt-in and off by default.
+- insert:
+    - id: yolo-mode
+      name: 'yolo-mode'
+      config:
+        guard:
+          mode: always              # always | yolo-only | off
+          useDefaults: true         # built-in catastrophic-core patterns
+          patterns: []              # extra regex sources, matched case-insensitively
+          useDefaultProtectedPaths: true
+          protectedPaths: []        # extra write/edit-protected paths ('~' allowed)
+          maxStrikes: 3             # denials before auto-disarm while armed; 0 = off
+        notify:
+          desktop:
+            command: ''             # e.g. 'notify-send "dsh yolo" "{event}: {detail}"'
+          webhook:
+            url: ''                 # e.g. https://example.com/hook - POSTs a JSON payload
+            headers: {}
+          email:
+            host: ''                # SMTP host; empty disables
+            port: 465
+            secure: true            # true = implicit TLS (465); false = STARTTLS if offered
+            user: ''
+            pass: ''
+            from: ''
+            to: ''                  # comma-separated recipients
+        context:
+          enabled: true             # model-facing runtime-context section while armed
+          order: 116
