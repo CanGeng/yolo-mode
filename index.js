@@ -43,6 +43,18 @@ import {
   effectiveApprovalPolicy,
   setApprovalPolicy,
 } from '@deepseek-ai/dsh-user-approval'
+import { KNOWN_SESSION_EVENT_TYPES } from '@deepseek-ai/dsh-session'
+
+// Register this plugin's derived-annotation event types with the persistence
+// layer so session logs containing them are not rejected as "written by a
+// newer harness". The harness's known-event-types set is intentionally closed
+// to out-of-repo plugins (a registration surface is deferred), so we mutate
+// the exported Set at module load - before any session is read. We ALSO mark
+// each appended event ignorable:true (see the append calls below) as a
+// belt-and-suspenders measure: if this plugin is ever unloaded, sessions with
+// yolo events still load (the events are silently skipped rather than
+// refusing the entire log).
+for (const t of ['yolo/armed', 'yolo/disarmed']) KNOWN_SESSION_EVENT_TYPES.add(t)
 
 export const name = 'yolo-mode'
 export const inject = ['agents', 'approval', 'sandboxPolicy', 'sessions', 'systemPrompt', 'timer']
@@ -530,7 +542,7 @@ export function apply(ctx, rawConfig) {
     const expiresAt = durationMs == null ? null : now + durationMs
     setSandboxMode(session, YOLO_SANDBOX)
     await ctx.approval.setPolicy(agent, YOLO_APPROVAL)
-    session.append('yolo/armed', { armedAt: now, expiresAt, revertTo })
+    session.append('yolo/armed', { armedAt: now, expiresAt, revertTo }, { ignorable: true })
     strikes.set(session.id, 0)
     try { await ctx.sessions.flush(session) } catch { /* best effort */ }
     notify('armed', `yolo armed${expiresAt ? ` until ${new Date(expiresAt).toISOString()}` : ' with no expiry'}; revert target sandbox=${revertTo.sandbox} approval=${revertTo.approval}`, session.id)
@@ -555,7 +567,7 @@ export function apply(ctx, rawConfig) {
       if (agent) await ctx.approval.setPolicy(agent, state.revertTo.approval)
       else setApprovalPolicy(session, state.revertTo.approval)
     }
-    session.append('yolo/disarmed', { at: Date.now(), reason })
+    session.append('yolo/disarmed', { at: Date.now(), reason }, { ignorable: true })
     strikes.delete(session.id)
     try { await ctx.sessions.flush(session) } catch { /* best effort */ }
     if (agent) {
