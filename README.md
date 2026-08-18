@@ -83,6 +83,15 @@ Accepted knowingly, in exchange for autonomy:
 - If your dsh Web endpoint has no authentication, any local process or page that can reach it can already operate the UI (a dsh deployment fact, not introduced by this plugin).
 - Everything — every tool call and guard decision — lands in the session log for later review in the GUI.
 
+## Session readability drift (uninstalling this plugin)
+
+dsh's persistence layer refuses to load a session log containing event types outside its built-in `KNOWN_SESSION_EVENT_TYPES` set (unless an event carries `ignorable:true` — which `Session.append()` cannot set as of 0.1.0-rc.6). `/yolo on|off` writes `yolo/armed` / `yolo/disarmed` annotation events into the log, so this plugin registers both types into that set at load time. Consequence:
+
+- **While this plugin is loaded**, yolo sessions load normally.
+- **If you uninstall it** (or disable its loading), any session that ever ran `/yolo` will fail to open with `SessionFormatUnsupportedError` until the plugin is restored, or the `yolo/*` lines in the log are given `"ignorable": true` (one-line JSON edit per event; `decodeStorageRecord` passes them through untouched).
+
+In short: session readability depends on the plugin's presence. This is a harness-side API gap (write path accepts anything, read path vets a closed vocabulary, and no writer for `ignorable` exists) — not a choice this plugin can opt out of on stock dsh. Before uninstalling, patch the logs as described above; a repair script is straightforward (decompress `session.jsonl.zstd`, add `"ignorable": true` to `yolo/*` lines, recompress).
+
 ## Install
 
 ```sh

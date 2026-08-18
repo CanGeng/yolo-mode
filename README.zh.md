@@ -83,6 +83,15 @@ notify:
 - 若你的 dsh Web 端点无认证，能访问端口的本机进程/页面本就能操作 UI（dsh 部署层面的事实，非本插件引入）。
 - 一切（每次工具调用、每次 guard 决定）都进入会话日志，供事后在 GUI 中完整审查。
 
+## 会话可读性漂移（卸载本插件前必读）
+
+dsh 的持久化层在加载会话日志时，会拒绝包含内置 `KNOWN_SESSION_EVENT_TYPES` 集合之外事件类型的日志（除非事件带 `ignorable:true`——而截至 0.1.0-rc.6，`Session.append()` 没有任何途径设置该字段）。`/yolo on|off` 会向日志写入 `yolo/armed` / `yolo/disarmed` 注记事件，因此本插件在加载时把这两个类型注册进该集合。后果：
+
+- **插件在装时**，yolo 会话正常加载。
+- **卸载插件后**（或禁用其加载），任何跑过 `/yolo` 的会话都会因 `SessionFormatUnsupportedError` 无法打开——除非恢复插件，或给日志里的 `yolo/*` 行补上 `"ignorable": true`（每个事件一行的 JSON 改动；`decodeStorageRecord` 对其原样透传）。
+
+简言之：**会话可读性依赖插件在位**。这是 harness 侧的 API 缺口（写入路径来者不拒、读取路径校验封闭词表、`ignorable` 有读无写），在原版 dsh 上插件无法绕开。卸载前请先按上述方式修补日志（解压 `session.jsonl.zstd`，给 `yolo/*` 行加 `"ignorable": true`，再压回）。
+
 ## 安装
 
 ```sh
