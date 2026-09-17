@@ -35,12 +35,10 @@ import z from '@deepseek-ai/schemastery'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import {
   SANDBOX_MODES,
-  effectiveSandboxMode,
   setSandboxMode,
 } from '@deepseek-ai/dsh-sandbox-policy'
 import {
   APPROVAL_POLICIES,
-  effectiveApprovalPolicy,
   setApprovalPolicy,
 } from '@deepseek-ai/dsh-user-approval'
 import { KNOWN_SESSION_EVENT_TYPES } from '@deepseek-ai/dsh-session'
@@ -532,8 +530,8 @@ export function apply(ctx, rawConfig) {
     const revertTo = previous.armed
       ? previous.revertTo
       : {
-          sandbox: effectiveSandboxMode(session.events) ?? ctx.sandboxPolicy.defaultMode,
-          approval: effectiveApprovalPolicy(session.events) ?? ctx.approval.config.policy ?? 'ask',
+          sandbox: ctx.sandboxPolicy.overrideOf(session) ?? ctx.sandboxPolicy.defaultMode,
+          approval: ctx.approval.overrideOf(session) ?? ctx.approval.config.policy ?? 'ask',
         }
     if (!SANDBOX_MODES.includes(revertTo.sandbox)) revertTo.sandbox = 'read-only'
     if (!APPROVAL_POLICIES.includes(revertTo.approval)) revertTo.approval = 'ask'
@@ -560,10 +558,10 @@ export function apply(ctx, rawConfig) {
     const state = yoloOf(session)
     if (!state.armed) return false
     const agent = ctx.agents.get(session.id)
-    if (effectiveSandboxMode(session.events) === YOLO_SANDBOX) {
+    if (ctx.sandboxPolicy.overrideOf(session) === YOLO_SANDBOX) {
       setSandboxMode(session, state.revertTo.sandbox)
     }
-    if (effectiveApprovalPolicy(session.events) === YOLO_APPROVAL) {
+    if (ctx.approval.overrideOf(session) === YOLO_APPROVAL) {
       if (agent) await ctx.approval.setPolicy(agent, state.revertTo.approval)
       else setApprovalPolicy(session, state.revertTo.approval)
     }
